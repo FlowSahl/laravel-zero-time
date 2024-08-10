@@ -1,0 +1,41 @@
+name: Build and Compile code modules
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [released]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Install ncc
+      run: npm install -g @vercel/ncc
+
+    - name: Build
+      run: npm run build
+
+    - name: Check for changes
+      id: git-check
+      run: |
+        git diff --quiet || echo "::set-output name=changes::true"
+
+    - name: Commit Build changes 
+      if: steps.git-check.outputs.changes == 'true'
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        branch: release
+        commit_message: 'Build Action ${{ github.sha }}'
+        file_pattern: '.'

@@ -1,0 +1,54 @@
+name: Test Before Merge
+
+on:
+  pull_request:
+    branches:
+      - release
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]  # Specify the Node.js versions you want to test against
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+      - name: Upload test results (if applicable)
+        if: always()  # This ensures the step runs even if tests fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: test-results.xml  # Adjust this if you're using a specific test reporter
+
+  # Optional: Notify on failure
+  notify:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Send notification
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "text": "Test failed on release branch"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}  # Set this secret in your repository settings
+
