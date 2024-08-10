@@ -34,9 +34,8 @@ jobs:
         git diff --quiet || echo "::set-output name=changes::true"
 
     - name: Commit Build changes 
-      if: steps.git-check.outputs.changes == 'true'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        branch: main
+        branch: release
         commit_message: 'Build Action ${{ github.sha }}'
         file_pattern: '.'
