@@ -1,9 +1,6 @@
 name: Build and Compile code modules
 
 on:
-  push:
-    branches:
-      - main
   release:
     types: [released]
 
@@ -13,6 +10,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
     - name: Checkout
