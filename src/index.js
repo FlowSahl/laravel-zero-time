@@ -2,23 +2,30 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 const { NodeSSH } = require('node-ssh');
 const axios = require('axios');
+const dotenv = require('dotenv');
 
 const ssh = new NodeSSH();
+
+// Load environment variables from .env file in development mode
+if (process.env.NODE_ENV !== 'production') {
+    dotenv.config();
+}
 
 async function deploy() {
     try {
         const inputs = getInputs();
+        validateInputs(inputs);
         logInputs(inputs);
 
         await checkSponsorship(inputs.githubRepoOwner);
 
-        await connectToServer(inputs);
+        await sshOperations.connect(inputs);
 
         await prepareDeployment(inputs);
 
         await activateRelease(inputs);
 
-        console.log("Deployment completed successfully!");
+        log("Deployment completed successfully!");
     } catch (error) {
         console.error(`Error: ${error.message}`);
         core.setFailed(error.message);
@@ -29,31 +36,50 @@ async function deploy() {
 
 function getInputs() {
     return {
-        host: core.getInput('host'),
-        username: core.getInput('username'),
-        port: core.getInput('port'),
-        password: core.getInput('password'),
-        sshKey: core.getInput('ssh_key'), // SSH key input
-        target: core.getInput('target'),
-        sha: core.getInput('sha'),
-        githubToken: core.getInput('github_token'),
-        envFile: core.getInput('env_file'),
-        commandScriptBeforeCheckFolders: core.getInput('command_script_before_check_folders'),
-        commandScriptAfterCheckFolders: core.getInput('command_script_after_check_folders'),
-        commandScriptBeforeDownload: core.getInput('command_script_before_download'),
-        commandScriptAfterDownload: core.getInput('command_script_after_download'),
-        commandScriptBeforeActivate: core.getInput('command_script_before_activate'),
-        commandScriptAfterActivate: core.getInput('command_script_after_activate'),
-        githubRepoOwner: github.context.payload.repository.owner.login,
-        githubRepo: github.context.payload.repository.name
+        host: process.env.HOST || core.getInput('host'),
+        username: process.env.REMOTE_USERNAME || core.getInput('username'),
+        port: process.env.PORT || core.getInput('port'),
+        password: process.env.PASSWORD || core.getInput('password'),
+        sshKey: (process.env.SSH_KEY || core.getInput('ssh_key')).replace(/\\n/g, '\n'), // Replace escaped newlines with actual newlines
+        passphrase: process.env.SSH_PASSPHRASE || core.getInput('ssh_passphrase'), // Add passphrase
+        target: process.env.TARGET || core.getInput('target'),
+        sha: process.env.SHA || core.getInput('sha'),
+        deploy_branch: process.env.GITHUB_DEPLOY_BRANCH || core.getInput('deploy_branch'),
+        githubToken: process.env.GITHUB_TOKEN || core.getInput('github_token'),
+        envFile: process.env.ENV_FILE || core.getInput('env_file'),
+        commandScriptBeforeCheckFolders: process.env.COMMAND_SCRIPT_BEFORE_CHECK_FOLDERS || core.getInput('command_script_before_check_folders'),
+        commandScriptAfterCheckFolders: process.env.COMMAND_SCRIPT_AFTER_CHECK_FOLDERS || core.getInput('command_script_after_check_folders'),
+        commandScriptBeforeDownload: process.env.COMMAND_SCRIPT_BEFORE_DOWNLOAD || core.getInput('command_script_before_download'),
+        commandScriptAfterDownload: process.env.COMMAND_SCRIPT_AFTER_DOWNLOAD || core.getInput('command_script_after_download'),
+        commandScriptBeforeActivate: process.env.COMMAND_SCRIPT_BEFORE_ACTIVATE || core.getInput('command_script_before_activate'),
+        commandScriptAfterActivate: process.env.COMMAND_SCRIPT_AFTER_ACTIVATE || core.getInput('command_script_after_activate'),
+        githubRepoOwner: process.env.GITHUB_REPO_OWNER || github.context.payload.repository.owner.login,
+        githubRepo: process.env.GITHUB_REPO || github.context.payload.repository.name
     };
 }
 
+function validateInputs(inputs) {
+    if (!inputs.host) throw new Error("Host is required.");
+    if (!inputs.username) throw new Error("Username is required.");
+    if (inputs.port && (isNaN(inputs.port) || inputs.port < 1 || inputs.port > 65535)) {
+        throw new Error("Port must be a valid number between 1 and 65535.");
+    }
+    if (!inputs.target) throw new Error("Target directory is required.");
+    if (!inputs.sha) throw new Error("SHA is required.");
+    if (!inputs.githubToken) throw new Error("GitHub token is required.");
+}
+
+function log(message) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${message}`);
+}
+
 function logInputs(inputs) {
-    console.log(`Host: ${inputs.host}`);
-    console.log(`Target: ${inputs.target}`);
-    console.log(`SHA: ${inputs.sha}`);
-    console.log(`GitHub Repo Owner: ${inputs.githubRepoOwner}`);
+    log(`Host: ${inputs.host}`);
+    log(`Target: ${inputs.target}`);
+    log(`SHA: ${inputs.sha}`);
+    log(`GitHub Repo Owner: ${inputs.githubRepoOwner}`);
+    // Omitting sensitive information like GitHub token and SSH key
 }
 
 async function checkSponsorship(githubRepoOwner) {
@@ -61,40 +87,70 @@ async function checkSponsorship(githubRepoOwner) {
         const response = await axios.post('https://deployer.flowsahl.com/api/check-github-sponsorship', {
             github_username: githubRepoOwner
         });
-        console.log('Thanks for sponsoring us :)');
+        log('Thanks for sponsoring us :)');
     } catch (error) {
         handleSponsorshipError(error);
     }
 }
 
 function handleSponsorshipError(error) {
-    if (error.response && error.response.status === 403) {
-        throw new Error("You are not a sponsor, Please consider sponsoring us to use this action, https://github.com/sponsors/FlowSahl , Start sponsoring us and try again [1$ or more]");
-    } else if (error.response && error.response.status === 500) {
-        console.error("An error occurred while checking sponsorship, but the deployment will continue.");
+    if (error.response) {
+        if (error.response.status === 403) {
+            throw new Error("You are not a sponsor. Please consider sponsoring us to use this action: https://github.com/sponsors/FlowSahl. Start sponsoring us and try again [1$ or more].");
+        } else if (error.response.status === 500) {
+            log("An internal server error occurred while checking sponsorship, but the deployment will continue.");
+        } else {
+            log(`Sponsorship check failed with status ${error.response.status}: ${error.response.data}`);
+            throw new Error("Sponsorship check failed. Please try again later.");
+        }
     } else {
-        throw error;
+        log("An unknown error occurred during the sponsorship check.");
+        // throw error;
     }
 }
 
-async function connectToServer({ host, username, port, password, sshKey }) {
-    console.log("Connecting to the server...");
-    const connectionOptions = {
-        host,
-        username,
-        port: port ? parseInt(port) : undefined,
-    };
+const sshOperations = {
+    async connect({ host, username, port, password, sshKey, passphrase }) {
+        log("Connecting to the server...");
+        const connectionOptions = {
+            host,
+            username,
+            port: port ? parseInt(port) : undefined,
+            privateKey: sshKey,
+            passphrase: passphrase
+        };
 
-    if (sshKey) {
-        connectionOptions.privateKey = sshKey;
-    } else if (password) {
-        connectionOptions.password = password;
-    } else {
-        throw new Error("Either an SSH key or a password must be provided for the SSH connection.");
+        try {
+            await ssh.connect(connectionOptions);
+            log("Successfully connected using SSH key.");
+        } catch (keyError) {
+            if (password) {
+                log("SSH key authentication failed, attempting password authentication...");
+                try {
+                    await ssh.connect({ host, username, port: port ? parseInt(port) : undefined, password });
+                    log("Successfully connected using password.");
+                } catch (passwordError) {
+                    log(`Failed to connect with password: ${passwordError.message}`);
+                    throw passwordError;
+                }
+            } else {
+                log(`Failed to connect with SSH key: ${keyError.message}`);
+                throw keyError;
+            }
+        }
+    },
+
+    async execute(command) {
+        try {
+            const result = await ssh.execCommand(command);
+            if (result.stdout) log(result.stdout);
+            if (result.stderr) console.error(result.stderr);
+            if (result.code !== 0) throw new Error(`Command failed: ${command} - ${result.stderr}`);
+        } catch (error) {
+            throw new Error(`Failed to execute command: ${command} - ${error.message}`);
+        }
     }
-
-    await ssh.connect(connectionOptions);
-}
+};
 
 async function prepareDeployment(inputs) {
     const paths = getPaths(inputs.target, inputs.sha);
@@ -123,13 +179,13 @@ function getPaths(target, sha) {
 
 async function runOptionalScript(script, description) {
     if (script !== 'false') {
-        console.log(`Running script ${description}: ${script}`);
-        await executeCommand(script);
+        log(`Running script ${description}: ${script}`);
+        await sshOperations.execute(script);
     }
 }
 
 async function checkAndPrepareFolders(paths) {
-    console.log("Checking the folders...");
+    log("Checking the folders...");
     const folders = [
         `${paths.target}/releases`,
         `${paths.target}/storage`,
@@ -141,63 +197,50 @@ async function checkAndPrepareFolders(paths) {
         `${paths.target}/storage/framework/sessions`,
         `${paths.target}/storage/framework/views`
     ];
-    await executeCommand(`mkdir -p ${folders.join(' ')}`);
-    await executeCommand(`rm -rf ${paths.target}/_temp_${paths.sha}`);
-    await executeCommand(`rm -rf ${paths.target}/releases/${paths.sha}`);
-    await executeCommand(`rm -rf ${paths.target}/${paths.sha}.zip`);
+    await sshOperations.execute(`mkdir -p ${folders.join(' ')}`);
+    await sshOperations.execute(`rm -rf ${paths.target}/_temp_${paths.sha}`);
+    await sshOperations.execute(`rm -rf ${paths.target}/releases/${paths.sha}`);
+    await sshOperations.execute(`rm -rf ${paths.target}/${paths.sha}.zip`);
 }
 
 async function cloneAndPrepareRepository(inputs, paths) {
-    if (inputs.commandScriptBeforeDownload !== 'false') {
-        await runOptionalScript(inputs.commandScriptBeforeDownload, "before clone");
-    }
+    await runOptionalScript(inputs.commandScriptBeforeDownload, "before clone");
 
-    const repoUrl = `https://${inputs.githubRepoOwner}:${inputs.githubToken}@github.com/${inputs.githubRepoOwner}/${inputs.githubRepo}.git`;
-    console.log(`Cloning Repo: ${repoUrl}`);
+    const repoUrl = `git@github.com:${inputs.githubRepoOwner}/${inputs.githubRepo}.git`;
+    log(`Cloning Repo: ${repoUrl}`);
 
-    await executeCommand(`
+    await sshOperations.execute(`
         cd ${inputs.target} &&
+        rm -rf ${paths.releasePath} &&
         git clone ${repoUrl} ${paths.releasePath} &&
         cd ${paths.releasePath} &&
-        git checkout ${inputs.sha}
+        git checkout ${inputs.deploy_branch}
     `);
 }
 
 async function syncEnvironmentFile(envFile, paths) {
     if (envFile) {
-        console.log("Syncing .env file");
-        await executeCommand(`echo '${envFile}' > ${paths.target}/.env`);
-        await executeCommand(`ln -sfn ${paths.target}/.env ${paths.releasePath}/.env`);
+        log("Syncing .env file");
+        await sshOperations.execute(`echo '${envFile}' > ${paths.target}/.env`);
+        await sshOperations.execute(`ln -sfn ${paths.target}/.env ${paths.releasePath}/.env`);
     }
 }
 
 async function linkStorage(paths) {
-    console.log("Linking the current release with storage");
-    await executeCommand(`ln -sfn ${paths.target}/storage ${paths.releasePath}/storage`);
+    log("Linking the current release with storage");
+    await sshOperations.execute(`ln -sfn ${paths.target}/storage ${paths.releasePath}/storage`);
 }
 
 async function activateRelease(inputs) {
     const paths = getPaths(inputs.target, inputs.sha);
 
-    if (inputs.commandScriptBeforeActivate !== 'false') {
-        await runOptionalScript(inputs.commandScriptBeforeActivate, "before activate");
-    }
+    await runOptionalScript(inputs.commandScriptBeforeActivate, "before activate");
 
-    console.log("Activating the release");
-    await executeCommand(`ln -sfn ${paths.releasePath} ${paths.activeReleasePath} && ls -1dt ${inputs.target}/releases/*/ | tail -n +4 | xargs rm -rf`);
+    log("Activating the release");
+    await sshOperations.execute(`ln -sfn ${paths.releasePath} ${paths.activeReleasePath} && ls -1dt ${inputs.target}/releases/*/ | tail -n +4 | xargs rm -rf`);
 
-    if (inputs.commandScriptAfterActivate !== 'false') {
-        await runOptionalScript(inputs.commandScriptAfterActivate, "after activate");
-    }
+    await runOptionalScript(inputs.commandScriptAfterActivate, "after activate");
 }
-
-async function executeCommand(command) {
-    const result = await ssh.execCommand(command);
-    if (result.stdout) console.log(result.stdout);
-    if (result.stderr) console.error(result.stderr);
-    if (result.code !== 0) throw new Error(`Command failed: ${command} - ${result.stderr}`);
-}
-
 module.exports = { deploy };
 
 // Automatically run the deploy function when the script is executed
