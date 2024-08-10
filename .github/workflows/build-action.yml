@@ -1,6 +1,9 @@
 name: Build and Compile code modules
 
 on:
+  push:
+    branches:
+      - main
   release:
     types: [released]
 
@@ -34,6 +37,6 @@ jobs:
       if: steps.git-check.outputs.changes == 'true'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        branch: release
+        branch: main
         commit_message: 'Build Action ${{ github.sha }}'
         file_pattern: '.'
