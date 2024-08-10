@@ -33,6 +33,6 @@ jobs:
     - name: Commit Build changes 
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        branch: release
+        branch: main
         commit_message: 'Build Action ${{ github.sha }}'
         file_pattern: '.'
