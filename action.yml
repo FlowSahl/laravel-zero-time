@@ -17,18 +17,21 @@ inputs:
   ssh_key:
     description: 'SSH private key to connect server instead use password'
     required: false
+  ssh_passphrase:
+    description: 'SSH private passphrase'
+    required: false
   target:
     description: 'Remote server target path '
     required: true
   sha:
     description: 'Git commit sha need to deploy (github.sha)'
     required: true
-  github_token:
-    description: 'Github token'
-    required: true
   env_file:
     description: 'Environment file content to sync with .env file'
     required: false
+  deploy_branch:
+    description: 'Branch will deploy from'
+    required: true
 
 
   command_script_before_check_folders:
