@@ -1,6 +1,9 @@
 name: Build and Compile code modules
 
 on:
+  push:
+    branches:
+      - main
   release:
     types: [released]
 
