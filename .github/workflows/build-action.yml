@@ -24,10 +24,23 @@ jobs:
 
     - name: Build
       run: npm run build
+    
+    - name: Create a new branch
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git checkout -b build-output-${{ github.run_id }}
+        git add .
+        git commit -m "Build output for release ${{ github.sha }}"
 
-    - name: Commit Build changes 
-      uses: stefanzweifel/git-auto-commit-action@v5
+    - name: Push changes to new branch
+      run: git push origin build-output-${{ github.run_id }}
+
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
       with:
-        branch: main
-        commit_message: 'Build Action ${{ github.sha }}'
-        file_pattern: '.'
+        branch: build-output-${{ github.run_id }}
+        base: main
+        title: "Build output for release ${{ github.sha }}"
+        body: "This PR contains the compiled code modules for release ${{ github.sha }}."
+        labels: build
