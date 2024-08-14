@@ -20,7 +20,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: build-output-${{ github.run_id }}
+        ref: main
 
     - name: Install dependencies
       run: npm install
@@ -28,11 +28,9 @@ jobs:
     - name: Install ncc
       run: npm install -g @vercel/ncc
 
-    - name: Build project
-      run: npm run build
-    
-    - name: Create a new branch
+    - name: Build project & Create a new branch
       run: |
+        npm run build
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git checkout -b build-output-${{ github.run_id }}
