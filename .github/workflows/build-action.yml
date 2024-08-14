@@ -1,6 +1,9 @@
 name: Build and Compile code modules
 
 on:
+  push:
+    branches:
+      - main
   release:
     types: [released]
 
@@ -39,6 +42,7 @@ jobs:
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v5
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
         branch: build-output-${{ github.run_id }}
         base: main
         title: "Build output for release ${{ github.sha }}"
