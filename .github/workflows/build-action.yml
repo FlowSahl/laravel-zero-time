@@ -1,15 +1,11 @@
 name: Build and Compile code modules
 
 on:
-  push:
-    branches:
-      - main
   release:
     types: [released]
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   build:
@@ -17,10 +13,8 @@ jobs:
     timeout-minutes: 5
 
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: main
 
     - name: Install dependencies
       run: npm install
@@ -28,27 +22,12 @@ jobs:
     - name: Install ncc
       run: npm install -g @vercel/ncc
 
-    - name: Build project & Create a new branch
-      run: |
-        npm run build
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git checkout -b build-output-${{ github.run_id }}
-        git add .
-        git commit -m "Build output for release ${{ github.sha }}"
-    
-    - name: Show git status for debugging
-      run: git status
+    - name: Build
+      run: npm run build
 
-    - name: Push changes to new branch
-      run: git push origin build-output-${{ github.run_id }}
-
-    - name: Create Pull Request
-      uses: peter-evans/create-pull-request@v6
+    - name: Commit Build changes 
+      uses: stefanzweifel/git-auto-commit-action@v5
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        branch: build-output-${{ github.run_id }}
-        base: main
-        title: "Build output for release ${{ github.sha }}"
-        body: "This PR contains the compiled code modules for release ${{ github.sha }}."
-        labels: build
+        branch: main
+        commit_message: 'Build Action ${{ github.sha }}'
+        file_pattern: '.'
