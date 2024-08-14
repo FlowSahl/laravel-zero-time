@@ -28,7 +28,7 @@ jobs:
     - name: Install ncc
       run: npm install -g @vercel/ncc
 
-    - name: Build
+    - name: Build project
       run: npm run build
     
     - name: Create a new branch
@@ -38,6 +38,9 @@ jobs:
         git checkout -b build-output-${{ github.run_id }}
         git add .
         git commit -m "Build output for release ${{ github.sha }}"
+    
+    - name: Show git status for debugging
+      run: git status
 
     - name: Push changes to new branch
       run: git push origin build-output-${{ github.run_id }}
