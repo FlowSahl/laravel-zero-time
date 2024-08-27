@@ -2,6 +2,14 @@
 
 All notable changes to `FlowSahl/laravel-zero-time` will be documented in this file.
 
+## 1.0.8 - 2024-08-27
+
+### What's Changed
+
+* Optimize code for typescript by @TariqAyman in https://github.com/FlowSahl/laravel-zero-time/pull/4
+
+**Full Changelog**: https://github.com/FlowSahl/laravel-zero-time/compare/1.0.7...1.0.8
+
 ## 1.0.7 - 2024-08-14
 
 **Full Changelog**: https://github.com/FlowSahl/laravel-zero-time/compare/1.0.6...1.0.7
