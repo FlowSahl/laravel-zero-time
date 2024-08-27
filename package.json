@@ -14,16 +14,25 @@
     "node-ssh": "^13.2.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.2.0",
+    "@typescript-eslint/parser": "^8.2.0",
     "@vercel/ncc": "^0.38.1",
     "dotenv": "^16.4.5",
+    "eslint": "^9.9.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
     "jest": "^29.7.0",
     "nock": "^13.5.4",
+    "prettier": "^3.3.3",
     "typescript": "^5.5.4"
   },
   "scripts": {
     "test": "jest",
     "start": "npm run build && node dist/index.js",
-    "build": "ncc build src/index.ts -o dist --source-map --minify"
+    "build": "ncc build src/index.ts -o dist --source-map --minify",
+    "format": "prettier --write 'src/**/*.{ts,tsx,js,jsx,json,md}'",
+    "lint": "eslint 'src/**/*.{ts,tsx,js,jsx}'",
+    "check": "npm run lint && npm run format"
   },
   "repository": {
     "type": "git",
