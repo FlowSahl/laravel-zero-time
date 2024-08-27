@@ -1,7 +1,6 @@
 import { ConnectionOptions, Inputs } from '../types';
 
 export function validateConfig(inputs: Inputs) {
-  console.log(inputs);
   if (!inputs.target) throw new Error('Target directory is required.');
   if (!inputs.sha) throw new Error('SHA is required.');
 }
