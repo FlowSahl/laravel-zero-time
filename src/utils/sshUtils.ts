@@ -5,14 +5,7 @@ import { ConnectionOptions, Paths } from '../types';
 const ssh = new NodeSSH();
 
 export const sshOperations = {
-  async connect({
-    host,
-    username,
-    port,
-    password,
-    privateKey,
-    passphrase,
-  }: ConnectionOptions): Promise<void> {
+  async connect({ host, username, port, password, privateKey, passphrase }: ConnectionOptions): Promise<void> {
     log('Connecting to the server...');
 
     const connectionOptions: ConnectionOptions = {
@@ -36,11 +29,7 @@ export const sshOperations = {
     }
   },
 
-  async execute(
-    command: string,
-    paths: Paths,
-    showCommandLog: boolean = false
-  ): Promise<void> {
+  async execute(command: string, paths: Paths, showCommandLog: boolean = false): Promise<void> {
     try {
       command = prepareCommand(command, paths);
 
@@ -50,12 +39,9 @@ export const sshOperations = {
 
       if (result.stdout) log(result.stdout);
       if (result.stderr) console.error(result.stderr);
-      if (result.code !== 0)
-        throw new Error(`Command failed: ${command} - ${result.stderr}`);
+      if (result.code !== 0) throw new Error(`Command failed: ${command} - ${result.stderr}`);
     } catch (error: any) {
-      throw new Error(
-        `Failed to execute command: ${command} - ${error.message}`
-      );
+      throw new Error(`Failed to execute command: ${command} - ${error.message}`);
     }
   },
 

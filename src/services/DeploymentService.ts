@@ -46,12 +46,9 @@ export class DeploymentService {
 
   private async checkSponsorship(githubRepoOwner: string) {
     try {
-      const response = await axios.post(
-        'https://deployer.flowsahl.com/api/check-github-sponsorship',
-        {
-          github_username: githubRepoOwner,
-        }
-      );
+      const response = await axios.post('https://deployer.flowsahl.com/api/check-github-sponsorship', {
+        github_username: githubRepoOwner,
+      });
       log('Thanks for sponsoring us :)');
     } catch (error: any) {
       this.handleSponsorshipError(error);
@@ -65,13 +62,9 @@ export class DeploymentService {
           'You are not a sponsor. Please consider sponsoring us to use this action: https://github.com/sponsors/FlowSahl. Start sponsoring us and try again [1$ or more].'
         );
       } else if (error.response.status === 500) {
-        log(
-          'An internal server error occurred while checking sponsorship, but the deployment will continue.'
-        );
+        log('An internal server error occurred while checking sponsorship, but the deployment will continue.');
       } else {
-        log(
-          `Sponsorship check failed with status ${error.response.status}: ${error.response.data}`
-        );
+        log(`Sponsorship check failed with status ${error.response.status}: ${error.response.data}`);
         throw new Error('Sponsorship check failed. Please try again later.');
       }
     } else {
@@ -82,20 +75,14 @@ export class DeploymentService {
 
   private async prepareDeployment(): Promise<void> {
     // 1. Run any user-specified script before checking folders
-    await this.runOptionalScript(
-      this.config.getInputs().commandScriptBeforeCheckFolders,
-      'before check folders'
-    );
+    await this.runOptionalScript(this.config.getInputs().commandScriptBeforeCheckFolders, 'before check folders');
 
     // 2. Ensure the necessary folders exist and are clean
     log('Preparing deployment directories...');
     await this.checkAndPrepareFolders(this.paths);
 
-      await this.runOptionalScript(
-        this.config.getInputs().commandScriptAfterCheckFolders,
-        'after check folders'
-      );
-    
+    await this.runOptionalScript(this.config.getInputs().commandScriptAfterCheckFolders, 'after check folders');
+
     // 3. Clone the repository into the new release directory
     log('Cloning repository...');
     await this.cloneAndPrepareRepository(this.config.getInputs(), this.paths);
@@ -103,10 +90,7 @@ export class DeploymentService {
     // 4. Sync the environment file if provided
     if (this.config.getInputs().envFile) {
       log('Syncing environment file...');
-      await this.syncEnvironmentFile(
-        this.config.getInputs().envFile ?? '',
-        this.paths
-      );
+      await this.syncEnvironmentFile(this.config.getInputs().envFile ?? '', this.paths);
     }
 
     // 5. Link the storage directory to the new release
@@ -114,10 +98,7 @@ export class DeploymentService {
     await this.linkStorage(this.paths);
 
     // 6. Run any user-specified script after download
-    await this.runOptionalScript(
-      this.config.getInputs().commandScriptAfterDownload,
-      'after download'
-    );
+    await this.runOptionalScript(this.config.getInputs().commandScriptAfterDownload, 'after download');
   }
 
   private async checkAndPrepareFolders(paths: Paths): Promise<void> {
@@ -134,60 +115,32 @@ export class DeploymentService {
     ];
 
     await sshOperations.execute(`mkdir -p ${folders.join(' ')}`, paths);
-    await sshOperations.execute(
-      `rm -rf ${paths.target}/releases/${paths.sha}`,
-      paths
-    );
+    await sshOperations.execute(`rm -rf ${paths.target}/releases/${paths.sha}`, paths);
   }
 
-  private async cloneAndPrepareRepository(
-    inputs: Inputs,
-    paths: Paths
-  ): Promise<void> {
-
-      await this.runOptionalScript(
-        inputs.commandScriptBeforeDownload,
-        'before clone'
-      );
+  private async cloneAndPrepareRepository(inputs: Inputs, paths: Paths): Promise<void> {
+    await this.runOptionalScript(inputs.commandScriptBeforeDownload, 'before clone');
 
     const repoUrl = `git@github.com:${inputs.githubRepoOwner}/${inputs.githubRepo}.git`;
 
     await sshOperations.execute(`cd ${paths.target}`, paths);
     await sshOperations.execute(`rm -rf ${paths.releasePath}`, paths);
-    await sshOperations.execute(
-      `git clone -b ${inputs.deploy_branch} ${repoUrl} ${paths.releasePath}`,
-      paths
-    );
+    await sshOperations.execute(`git clone -b ${inputs.deploy_branch} ${repoUrl} ${paths.releasePath}`, paths);
     await sshOperations.execute(`cd ${paths.releasePath}`, paths);
   }
 
-  private async syncEnvironmentFile(
-    envFile: string,
-    paths: Paths
-  ): Promise<void> {
-        log('Syncing .env file');
+  private async syncEnvironmentFile(envFile: string, paths: Paths): Promise<void> {
+    log('Syncing .env file');
 
-    await sshOperations.execute(
-      `echo '${envFile}' > ${paths.target}/.env`,
-      paths
-    );
-    await sshOperations.execute(
-      `ln -sfn ${paths.target}/.env ${paths.releasePath}/.env`,
-      paths
-    );
+    await sshOperations.execute(`echo '${envFile}' > ${paths.target}/.env`, paths);
+    await sshOperations.execute(`ln -sfn ${paths.target}/.env ${paths.releasePath}/.env`, paths);
   }
 
   private async linkStorage(paths: Paths): Promise<void> {
-    await sshOperations.execute(
-      `ln -sfn ${paths.target}/storage ${paths.releasePath}/storage`,
-      paths
-    );
+    await sshOperations.execute(`ln -sfn ${paths.target}/storage ${paths.releasePath}/storage`, paths);
   }
 
-  private async runOptionalScript(
-    script: string | undefined,
-    description: string
-  ): Promise<void> {
+  private async runOptionalScript(script: string | undefined, description: string): Promise<void> {
     if (script && script !== 'false') {
       log(`Running script ${description}: ${script}`);
       await sshOperations.execute(script, this.paths);
@@ -198,28 +151,16 @@ export class DeploymentService {
     log('Activating the new release...');
 
     // 1. Run any user-specified script before activation
-    await this.runOptionalScript(
-      this.config.getInputs().commandScriptBeforeActivate,
-      'before activate'
-    );
+    await this.runOptionalScript(this.config.getInputs().commandScriptBeforeActivate, 'before activate');
 
     // 2. Switch the symbolic link to point to the new release
-    await sshOperations.execute(
-      `ln -sfn ${this.paths.releasePath} ${this.paths.activeReleasePath}`,
-      this.paths
-    );
+    await sshOperations.execute(`ln -sfn ${this.paths.releasePath} ${this.paths.activeReleasePath}`, this.paths);
 
     // 3. Clean up old releases, keeping the last three
-    await sshOperations.execute(
-      `ls -1dt ${this.paths.target}/releases/*/ | tail -n +4 | xargs rm -rf`,
-      this.paths
-    );
+    await sshOperations.execute(`ls -1dt ${this.paths.target}/releases/*/ | tail -n +4 | xargs rm -rf`, this.paths);
 
     // 4. Run any user-specified script after activation
-    await this.runOptionalScript(
-      this.config.getInputs().commandScriptAfterActivate,
-      'after activate'
-    );
+    await this.runOptionalScript(this.config.getInputs().commandScriptAfterActivate, 'after activate');
   }
 
   private getPaths(target: string, sha: string): Paths {

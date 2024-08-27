@@ -1,4 +1,4 @@
-import { ConnectionOptions, Inputs } from "../types";
+import { ConnectionOptions, Inputs } from '../types';
 
 export function log(message: string): void {
   const timestamp = new Date().toISOString();
