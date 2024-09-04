@@ -12,12 +12,14 @@ export interface Inputs {
     githubRepoOwner: string;
     githubRepo: string;
 }
+/** Represents the paths used during the deployment process */
 export interface Paths {
     target: string;
     sha: string;
     releasePath: string;
     activeReleasePath: string;
 }
+/** Represents the SSH connection options */
 export interface ConnectionOptions {
     host: string;
     username: string;
