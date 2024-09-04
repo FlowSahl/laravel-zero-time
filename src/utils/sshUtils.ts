@@ -63,12 +63,14 @@ export const sshOperations = {
 
 function prepareCommand(command: string, paths: Paths): string {
   const placeholders = {
-    $THIS_RELEASE_PATH: paths.releasePath,
+    $THIS_RELEASE_PATH: paths.releasePath, // Ensure the keys match the placeholders exactly
     $ACTIVE_RELEASE_PATH: `${paths.target}/current`,
   };
 
+  // Replace each placeholder in the command with the correct path
   for (const [placeholder, value] of Object.entries(placeholders)) {
-    command = command.replace(new RegExp(placeholder, 'g'), value);
+    // Use `replace` with a global regex for multiple instances in multi-line commands
+    command = command.replace(new RegExp(placeholder.replace('$', '\\$'), 'g'), value);
   }
 
   return command;
