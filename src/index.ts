@@ -7,9 +7,15 @@ async function run(): Promise<void> {
     const config = new ConfigManager();
     const deploymentService = new DeploymentService(config);
 
+    log(`Starting deployment with configuration: ${JSON.stringify(config)}`);
+
     await deploymentService.deploy();
   } catch (error: any) {
     log(`Deployment failed: ${error.message}`);
+    if (error.stack) {
+      log(error.stack);
+    }
+    process.exit(1); // Indicate failure
   }
 }
 
