@@ -1,15 +1,50 @@
 # Laravel Zero Downtime Deployment
 
 ## Overview
-This GitHub Action helps you deploy your project to a remote server with zero downtime, ensuring that your application remains available during deployments.
+This GitHub Action helps you deploy your Laravel project to a remote server with zero downtime, ensuring that your application remains available during deployments. It offers flexibility, security, and ease of use, making it ideal for projects of all sizes.
 
 ## Features
 - **Zero Downtime Deployment**: Ensure uninterrupted service during deployments.
-- **Easy Integration**: Simple setup and integration into your existing workflow.
-- **Flexible Deployment**: Suitable for projects of all sizes, from personal projects to enterprise applications.
-- **Custom Scripts**: Run custom scripts before and after key deployment steps.
-- **Secure**: Uses GitHub Secrets for sensitive data like server credentials and GitHub tokens.
-- **Environment File Sync**: Sync environment variables with the remote server.
+- **Modular and Maintainable Code**: Well-organized code structure with TypeScript, making it easy to extend and maintain.
+- **Customizable Workflow**: Easily integrate custom scripts at various stages of the deployment process.
+- **Environment Validation**: Robust environment configuration validation using `joi`.
+- **Secure Deployment**: Uses GitHub Secrets to securely manage sensitive data like server credentials and GitHub tokens.
+- **Environment File Sync**: Automatically sync environment variables with the remote server.
+
+## How It Works
+
+The Laravel Zero Downtime Deployment action follows a series of carefully structured steps to ensure that your application remains online throughout the deployment process:
+
+### Steps in the Deployment Process:
+
+1. **Preparation of Directories:**
+   - The action starts by preparing the necessary directories on the remote server. This includes creating a new directory for the release and ensuring that required subdirectories (e.g., storage, logs) are available.
+
+2. **Optional Pre-Folder Script Execution:**
+   - If specified, a custom script is executed before the folders are checked and prepared. This can be useful for tasks like cleaning up old files or performing pre-checks.
+
+3. **Cloning the Repository:**
+   - The specified branch of your GitHub repository is cloned into the newly prepared release directory on the remote server. This ensures that the latest code is deployed.
+
+4. **Environment File Synchronization:**
+   - The `.env` file is synchronized between your local setup and the remote server. This ensures that your application’s environment variables are consistent across deployments.
+
+5. **Linking the Storage Directory:**
+   - The storage directory is linked from the new release directory to ensure that persistent data (like uploaded files) is shared across all releases.
+
+6. **Optional Post-Download Script Execution:**
+   - If specified, a custom script is executed after the repository is cloned and the environment is set up. This can be used for tasks like installing dependencies, running database migrations, or optimizing the application.
+
+7. **Activating the New Release:**
+   - The symbolic link to the current release is updated to point to the new release directory. This is the step where the new version of your application goes live without any downtime.
+
+8. **Cleaning Up Old Releases:**
+   - Old release directories are cleaned up, typically keeping only the last few releases to save space on the server.
+
+9. **Optional Post-Activation Script Execution:**
+   - If specified, a custom script is executed after the new release is activated. This is often used to perform final optimizations or notify external services of the new deployment.
+
+By following these steps, the action ensures that your application is deployed smoothly, with zero downtime and minimal risk.
 
 ## Inputs
 
@@ -102,6 +137,17 @@ You can provide custom scripts to run at various stages of the deployment. Below
 - **After Downloading Release**: `command_script_after_download`
 - **Before Activating Release**: `command_script_before_activate`
 - **After Activating Release**: `command_script_after_activate`
+
+## Testing
+To ensure the reliability of your deployment process, unit and feature tests have been included in the codebase using Jest. Tests cover various components such as the `DeploymentService`, `ConfigManager`, and `sshUtils`. Running these tests can help identify issues early in the development process.
+
+To run the tests:
+
+```bash
+npm run test
+```
+
+This will execute the suite of unit and feature tests, ensuring that all parts of the deployment process function correctly.
 
 ## Troubleshooting
 If you encounter issues, check the GitHub Actions logs for detailed error messages. Ensure that:

@@ -11,49 +11,67 @@ export class ConfigManager {
       dotenv.config();
     }
 
-    validateConfig(this.getInputs());
-    validateConnectionOptions(this.getConnectionOptions());
+    try {
+      validateConfig(this.getInputs());
+      validateConnectionOptions(this.getConnectionOptions());
+    } catch (error: any) {
+      core.setFailed(`Configuration validation failed: ${error.message}`);
+      throw error; // Re-throw if necessary for upstream handling
+    }
+  }
+
+  private getInputOrEnv(key: string, envKey: string): string {
+    return process.env[envKey] || core.getInput(key);
   }
 
   getInputs(): Inputs {
     return {
-      target: process.env.TARGET || core.getInput('target'),
-      sha: process.env.SHA || core.getInput('sha'),
-      deploy_branch: process.env.GITHUB_DEPLOY_BRANCH || core.getInput('deploy_branch'),
-      envFile: process.env.ENV_FILE || core.getInput('env_file'),
-      commandScriptBeforeCheckFolders:
-        process.env.COMMAND_SCRIPT_BEFORE_CHECK_FOLDERS || core.getInput('command_script_before_check_folders'),
-      commandScriptAfterCheckFolders:
-        process.env.COMMAND_SCRIPT_AFTER_CHECK_FOLDERS || core.getInput('command_script_after_check_folders'),
-      commandScriptBeforeDownload:
-        process.env.COMMAND_SCRIPT_BEFORE_DOWNLOAD || core.getInput('command_script_before_download'),
-      commandScriptAfterDownload:
-        process.env.COMMAND_SCRIPT_AFTER_DOWNLOAD || core.getInput('command_script_after_download'),
-      commandScriptBeforeActivate:
-        process.env.COMMAND_SCRIPT_BEFORE_ACTIVATE || core.getInput('command_script_before_activate'),
-      commandScriptAfterActivate:
-        process.env.COMMAND_SCRIPT_AFTER_ACTIVATE || core.getInput('command_script_after_activate'),
-      githubRepoOwner: process.env.GITHUB_REPO_OWNER || github.context.payload.repository?.owner?.login || '',
-      githubRepo: process.env.GITHUB_REPO || github.context.payload.repository?.name || '',
+      target: this.getInputOrEnv('target', 'TARGET'),
+      sha: this.getInputOrEnv('sha', 'SHA'),
+      deploy_branch: this.getInputOrEnv('deploy_branch', 'GITHUB_DEPLOY_BRANCH'),
+      envFile: this.getInputOrEnv('env_file', 'ENV_FILE'),
+      commandScriptBeforeCheckFolders: this.getInputOrEnv(
+        'command_script_before_check_folders',
+        'COMMAND_SCRIPT_BEFORE_CHECK_FOLDERS'
+      ),
+      commandScriptAfterCheckFolders: this.getInputOrEnv(
+        'command_script_after_check_folders',
+        'COMMAND_SCRIPT_AFTER_CHECK_FOLDERS'
+      ),
+      commandScriptBeforeDownload: this.getInputOrEnv(
+        'command_script_before_download',
+        'COMMAND_SCRIPT_BEFORE_DOWNLOAD'
+      ),
+      commandScriptAfterDownload: this.getInputOrEnv('command_script_after_download', 'COMMAND_SCRIPT_AFTER_DOWNLOAD'),
+      commandScriptBeforeActivate: this.getInputOrEnv(
+        'command_script_before_activate',
+        'COMMAND_SCRIPT_BEFORE_ACTIVATE'
+      ),
+      commandScriptAfterActivate: this.getInputOrEnv('command_script_after_activate', 'COMMAND_SCRIPT_AFTER_ACTIVATE'),
+      githubRepoOwner:
+        this.getInputOrEnv('github_repo_owner', 'GITHUB_REPO_OWNER') ||
+        github.context.payload.repository?.owner?.login ||
+        '',
+      githubRepo: this.getInputOrEnv('github_repo', 'GITHUB_REPO') || github.context.payload.repository?.name || '',
     };
   }
 
   getConnectionOptions(): ConnectionOptions {
     return {
-      host: process.env.HOST || core.getInput('host'),
-      username: process.env.REMOTE_USERNAME || core.getInput('username'),
-      port: parseInt(process.env.PORT || core.getInput('port') || '22'),
-      password: process.env.PASSWORD || core.getInput('password'),
-      privateKey: (process.env.SSH_KEY || core.getInput('ssh_key')).replace(/\\n/g, '\n'),
-      passphrase: process.env.SSH_PASSPHRASE || core.getInput('ssh_passphrase'),
+      host: this.getInputOrEnv('host', 'HOST'),
+      username: this.getInputOrEnv('username', 'REMOTE_USERNAME'),
+      port: parseInt(this.getInputOrEnv('port', 'PORT')),
+      password: this.getInputOrEnv('password', 'PASSWORD'),
+      privateKey: this.getInputOrEnv('ssh_key', 'SSH_KEY').replace(/\\n/g, '\n'),
+      passphrase: this.getInputOrEnv('ssh_passphrase', 'SSH_PASSPHRASE'),
     };
   }
 
   getTarget(): string {
-    return process.env.TARGET || core.getInput('target');
+    return this.getInputOrEnv('target', 'TARGET');
   }
 
   getSha(): string {
-    return process.env.SHA || core.getInput('sha');
+    return this.getInputOrEnv('sha', 'SHA');
   }
 }

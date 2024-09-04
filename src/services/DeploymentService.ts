@@ -17,7 +17,7 @@ export class DeploymentService {
 
   async deploy(): Promise<void> {
     try {
-      await this.checkSponsorship(this.config.getInputs().githubRepoOwner);
+      await this.checkSponsorship(this.config.getInputs().githubRepoOwner ?? '');
 
       logInputs(this.config.getInputs(), this.config.getConnectionOptions());
 
@@ -34,10 +34,11 @@ export class DeploymentService {
       if (error instanceof Error) {
         // Type guard for Error
         log(`Deployment failed: ${error.message}`);
+        log(error.stack?.toString() ?? 'No Error Stack trace'); // Stack trace for detailed error information
       } else {
         log('An unknown error occurred during deployment.');
       }
-      core.setFailed(error.message);
+      core.setFailed(error.message || 'An unknown error occurred');
       throw error; // Re-throw the error after handling
     } finally {
       sshOperations.dispose();
@@ -67,12 +68,15 @@ export class DeploymentService {
         log(`Sponsorship check failed with status ${error.response.status}: ${error.response.data}`);
         throw new Error('Sponsorship check failed. Please try again later.');
       }
+    } else if (axios.isAxiosError(error)) {
+      log(`Axios error: ${error.message}`);
     } else {
+      log('Non-Axios error occurred during sponsorship check');
       log('An unknown error occurred during the sponsorship check.');
       // throw error;
     }
   }
-
+  
   private async prepareDeployment(): Promise<void> {
     // 1. Run any user-specified script before checking folders
     await this.runOptionalScript(this.config.getInputs().commandScriptBeforeCheckFolders, 'before check folders');
@@ -114,8 +118,10 @@ export class DeploymentService {
       `${paths.target}/storage/framework/views`,
     ];
 
-    await sshOperations.execute(`mkdir -p ${folders.join(' ')}`, paths);
-    await sshOperations.execute(`rm -rf ${paths.target}/releases/${paths.sha}`, paths);
+    await Promise.all([
+      sshOperations.execute(`mkdir -p ${folders.join(' ')}`, paths),
+      sshOperations.execute(`rm -rf ${paths.target}/releases/${paths.sha}`, paths),
+    ]);
   }
 
   private async cloneAndPrepareRepository(inputs: Inputs, paths: Paths): Promise<void> {
@@ -144,6 +150,8 @@ export class DeploymentService {
     if (script && script !== 'false') {
       log(`Running script ${description}: ${script}`);
       await sshOperations.execute(script, this.paths);
+    } else {
+      log(`No script to run for ${description}`);
     }
   }
 
